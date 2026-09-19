@@ -64,9 +64,15 @@ let selectedModel = null;
 async function loadModels() {
   modelCount.textContent = 'Lade Modelle...';
   try {
-    const res = await fetch('/api/models');
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Fehler beim Laden');
+    // Fetch models and config in parallel
+    const [modelsRes, configRes] = await Promise.all([
+      fetch('/api/models'),
+      fetch('/api/config')
+    ]);
+    const data = await modelsRes.json();
+    if (!modelsRes.ok) throw new Error(data.detail || 'Fehler beim Laden');
+    const config = await configRes.json();
+    const defaultModel = config.default_model;
 
     // Group by provider
     const providers = {};
@@ -88,9 +94,11 @@ async function loadModels() {
       modelSelect.appendChild(optgroup);
     }
 
-    // Restore previous selection if still available
-    if (selectedModel && [...modelSelect.options].some(o => o.value === selectedModel)) {
-      modelSelect.value = selectedModel;
+    // Select default model from config (or restore previous selection)
+    const modelToSelect = selectedModel || defaultModel;
+    if (modelToSelect && [...modelSelect.options].some(o => o.value === modelToSelect)) {
+      modelSelect.value = modelToSelect;
+      selectedModel = modelToSelect;
     }
     modelCount.textContent = data.total + ' Modelle';
   } catch (err) {

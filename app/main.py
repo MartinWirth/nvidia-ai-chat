@@ -71,6 +71,11 @@ async def health():
     return {"status": "ok", "api_key_configured": bool(NVIDIA_API_KEY)}
 
 
+@app.get("/api/config")
+async def config():
+    return {"default_model": DEFAULT_MODEL}
+
+
 @app.get("/api/models", response_model=ModelsResponse)
 async def list_models():
     """Fetch all currently available models from the NVIDIA API."""
