@@ -138,7 +138,7 @@ async def chat(payload: ChatRequest):
         "Accept": "application/json",
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.post(
                 f"{NVIDIA_API_BASE_URL}/chat/completions",
