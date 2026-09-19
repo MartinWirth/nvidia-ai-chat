@@ -36,6 +36,16 @@ app.add_middleware(
 )
 
 
+class ModelInfo(BaseModel):
+    id: str
+    provider: str
+
+
+class ModelsResponse(BaseModel):
+    models: List[ModelInfo]
+    total: int
+
+
 class ChatMessage(BaseModel):
     role: str = Field(..., description="'user' oder 'assistant'")
     content: str
@@ -59,6 +69,42 @@ class ChatResponse(BaseModel):
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "api_key_configured": bool(NVIDIA_API_KEY)}
+
+
+@app.get("/api/models", response_model=ModelsResponse)
+async def list_models():
+    """Fetch all currently available models from the NVIDIA API."""
+    headers = {"Accept": "application/json"}
+    if NVIDIA_API_KEY:
+        headers["Authorization"] = f"Bearer {NVIDIA_API_KEY}"
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.get(
+                f"{NVIDIA_API_BASE_URL}/models",
+                headers=headers,
+            )
+        except httpx.RequestError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Verbindung zur NVIDIA-API fehlgeschlagen: {exc}",
+            )
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=f"NVIDIA-API Fehler: {response.text}",
+        )
+
+    data = response.json()
+    models = []
+    for m in data.get("data", []):
+        model_id = m["id"]
+        provider = model_id.split("/")[0] if "/" in model_id else "unknown"
+        models.append(ModelInfo(id=model_id, provider=provider))
+
+    models.sort(key=lambda m: (m.provider, m.id))
+    return ModelsResponse(models=models, total=len(models))
 
 
 @app.post("/api/chat", response_model=ChatResponse)

@@ -66,6 +66,26 @@ Nur `question` ist erforderlich. Response:
 
 Prüft, ob der Server läuft und ein API-Key konfiguriert ist.
 
+### `GET /api/models`
+
+Gibt alle aktuell über die NVIDIA-API verfügbaren Modelle zurück.
+Die Modelle werden nach Provider gruppiert sortiert.
+
+Response:
+```json
+{
+  "models": [
+    {"id": "meta/llama-3.2-11b-vision-instruct", "provider": "meta"},
+    {"id": "nvidia/llama-3.1-nemotron-70b-instruct", "provider": "nvidia"}
+  ],
+  "total": 82
+}
+```
+
+Das Frontend lädt diese Liste beim Start automatisch und füllt eine
+Modell-Auswahl (Dropdown), gruppiert nach Provider. Mit dem ↻-Button
+kann die Liste aktualisiert werden.
+
 ## Andere Modelle verwenden
 
 NVIDIA bietet viele Modelle über denselben OpenAI-kompatiblen Endpunkt an

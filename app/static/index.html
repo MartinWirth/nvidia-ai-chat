@@ -30,10 +30,20 @@
   textarea { flex: 1; resize: vertical; min-height: 48px; font-family: inherit; padding: 8px; }
   button { padding: 8px 16px; cursor: pointer; }
   button:disabled { opacity: 0.6; cursor: default; }
+  #model-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  #model-bar label { font-size: 0.9rem; }
+  #model { font-family: inherit; padding: 6px 8px; max-width: 360px; }
+  #refresh-models { padding: 6px 10px; font-size: 0.85rem; }
 </style>
 </head>
 <body>
   <h1>🤖 NVIDIA AI Chat</h1>
+  <div id="model-bar">
+    <label for="model">Modell:</label>
+    <select id="model"></select>
+    <button id="refresh-models" type="button" title="Modellliste aktualisieren">↻</button>
+    <span id="model-count" style="font-size:0.8rem;color:#888;"></span>
+  </div>
   <div id="chat"></div>
   <form id="form">
     <textarea id="question" placeholder="Deine Frage..." required></textarea>
@@ -45,7 +55,62 @@ const chatEl = document.getElementById('chat');
 const form = document.getElementById('form');
 const questionEl = document.getElementById('question');
 const sendBtn = document.getElementById('send');
+const modelSelect = document.getElementById('model');
+const refreshBtn = document.getElementById('refresh-models');
+const modelCount = document.getElementById('model-count');
 let history = [];
+let selectedModel = null;
+
+async function loadModels() {
+  modelCount.textContent = 'Lade Modelle...';
+  try {
+    const res = await fetch('/api/models');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Fehler beim Laden');
+
+    // Group by provider
+    const providers = {};
+    data.models.forEach(m => {
+      if (!providers[m.provider]) providers[m.provider] = [];
+      providers[m.provider].push(m.id);
+    });
+
+    modelSelect.innerHTML = '';
+    for (const provider of Object.keys(providers).sort()) {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = provider;
+      providers[provider].sort().forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = id;
+        optgroup.appendChild(opt);
+      });
+      modelSelect.appendChild(optgroup);
+    }
+
+    // Restore previous selection if still available
+    if (selectedModel && [...modelSelect.options].some(o => o.value === selectedModel)) {
+      modelSelect.value = selectedModel;
+    }
+    modelCount.textContent = data.total + ' Modelle';
+  } catch (err) {
+    modelCount.textContent = '';
+    const opt = document.createElement('option');
+    opt.textContent = 'Fehler: ' + err.message;
+    opt.disabled = true;
+    modelSelect.innerHTML = '';
+    modelSelect.appendChild(opt);
+  }
+}
+
+modelSelect.addEventListener('change', () => {
+  selectedModel = modelSelect.value;
+});
+
+refreshBtn.addEventListener('click', loadModels);
+
+// Load models on startup
+loadModels();
 
 function addMessage(role, text) {
   const div = document.createElement('div');
@@ -69,7 +134,7 @@ form.addEventListener('submit', async (e) => {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, history: history.slice(0, -1) })
+      body: JSON.stringify({ question, model: selectedModel, history: history.slice(0, -1) })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Unbekannter Fehler');
