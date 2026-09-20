@@ -128,6 +128,13 @@ function addMessage(role, text) {
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
+questionEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    form.requestSubmit();
+  }
+});
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const question = questionEl.value.trim();
